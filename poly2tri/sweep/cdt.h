@@ -88,6 +88,9 @@ public:
    * Get triangle map
    */
   std::list<Triangle*> GetMap();
+  
+  //! Access the points.
+  std::vector< Point* >& GetPoints() { return sweep_context_->GetPoints(); }
 
   private:
 

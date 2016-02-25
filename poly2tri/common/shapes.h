@@ -35,8 +35,8 @@
 
 #include <vector>
 #include <cstddef>
-#include <assert.h>
 #include <cmath>
+#include <geometrix/utility/assert.hpp>
 
 namespace p2t {
 
@@ -136,7 +136,7 @@ struct Edge {
         p = &p2;
       } else if (p1.x == p2.x) {
         // Repeat points
-        assert(false);
+        GEOMETRIX_ASSERT(false);
       }
     }
 

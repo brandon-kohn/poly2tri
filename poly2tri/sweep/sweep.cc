@@ -33,6 +33,7 @@
 #include "sweep_context.h"
 #include "advancing_front.h"
 #include "../common/utils.h"
+#include <geometrix/utility/assert.hpp>
 
 namespace p2t {
 
@@ -122,7 +123,7 @@ void Sweep::EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangl
       EdgeEvent( tcx, ep, *p1, triangle, *p1 );
     } else {
       std::runtime_error("EdgeEvent - collinear points not supported");
-      assert(0);
+      GEOMETRIX_ASSERT(0);
     }
     return;
   }
@@ -139,7 +140,7 @@ void Sweep::EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangl
       EdgeEvent( tcx, ep, *p2, triangle, *p2 );
     } else {
       std::runtime_error("EdgeEvent - collinear points not supported");
-      assert(0);
+      GEOMETRIX_ASSERT(0);
     }
     return;
   }

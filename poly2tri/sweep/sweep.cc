@@ -177,6 +177,7 @@ bool Sweep::IsEdgeSideOfTriangle(Triangle& triangle, Point& ep, Point& eq)
 
 Node& Sweep::NewFrontTriangle(SweepContext& tcx, Point& point, Node& node)
 {
+  GEOMETRIX_ASSERT(node.next);
   Triangle* triangle = new Triangle(point, *node.point, *node.next->point);
 
   triangle->MarkNeighbor(*node.triangle);

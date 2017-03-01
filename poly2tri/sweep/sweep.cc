@@ -107,57 +107,60 @@ void Sweep::EdgeEvent(SweepContext& tcx, Edge* edge, Node* node)
 
 void Sweep::EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangle, Point& point)
 {
-  if (IsEdgeSideOfTriangle(*triangle, ep, eq)) {
-    return;
-  }
+	GEOMETRIX_ASSERT(triangle);
+	if (triangle != nullptr) {
+		if (IsEdgeSideOfTriangle(*triangle, ep, eq)) {
+			return;
+		}
 
-  Point* p1 = triangle->PointCCW(point);
-  Orientation o1 = Orient2d(eq, *p1, ep);
-  if (o1 == COLLINEAR) {
-    if( triangle->Contains(&eq, p1)) {
-      triangle->MarkConstrainedEdge(&eq, p1 );
-      // We are modifying the constraint maybe it would be better to
-      // not change the given constraint and just keep a variable for the new constraint
-      tcx.edge_event.constrained_edge->q = p1;
-      triangle = &triangle->NeighborAcross(point);
-      EdgeEvent( tcx, ep, *p1, triangle, *p1 );
-    } else {
-      std::runtime_error("EdgeEvent - collinear points not supported");
-      GEOMETRIX_ASSERT(0);
-    }
-    return;
-  }
+		Point* p1 = triangle->PointCCW(point);
+		Orientation o1 = Orient2d(eq, *p1, ep);
+		if (o1 == COLLINEAR) {
+			if (triangle->Contains(&eq, p1)) {
+				triangle->MarkConstrainedEdge(&eq, p1);
+				// We are modifying the constraint maybe it would be better to
+				// not change the given constraint and just keep a variable for the new constraint
+				tcx.edge_event.constrained_edge->q = p1;
+				triangle = &triangle->NeighborAcross(point);
+				EdgeEvent(tcx, ep, *p1, triangle, *p1);
+			} else {
+				std::runtime_error("EdgeEvent - collinear points not supported");
+				GEOMETRIX_ASSERT(0);
+			}
+			return;
+		}
 
-  Point* p2 = triangle->PointCW(point);
-  Orientation o2 = Orient2d(eq, *p2, ep);
-  if (o2 == COLLINEAR) {
-    if( triangle->Contains(&eq, p2)) {
-      triangle->MarkConstrainedEdge(&eq, p2 );
-      // We are modifying the constraint maybe it would be better to
-      // not change the given constraint and just keep a variable for the new constraint
-      tcx.edge_event.constrained_edge->q = p2;
-      triangle = &triangle->NeighborAcross(point);
-      EdgeEvent( tcx, ep, *p2, triangle, *p2 );
-    } else {
-      std::runtime_error("EdgeEvent - collinear points not supported");
-      GEOMETRIX_ASSERT(0);
-    }
-    return;
-  }
+		Point* p2 = triangle->PointCW(point);
+		Orientation o2 = Orient2d(eq, *p2, ep);
+		if (o2 == COLLINEAR) {
+			if (triangle->Contains(&eq, p2)) {
+				triangle->MarkConstrainedEdge(&eq, p2);
+				// We are modifying the constraint maybe it would be better to
+				// not change the given constraint and just keep a variable for the new constraint
+				tcx.edge_event.constrained_edge->q = p2;
+				triangle = &triangle->NeighborAcross(point);
+				EdgeEvent(tcx, ep, *p2, triangle, *p2);
+			} else {
+				std::runtime_error("EdgeEvent - collinear points not supported");
+				GEOMETRIX_ASSERT(0);
+			}
+			return;
+		}
 
-  if (o1 == o2) {
-    // Need to decide if we are rotating CW or CCW to get to a triangle
-    // that will cross edge
-    if (o1 == CW) {
-      triangle = triangle->NeighborCCW(point);
-    }       else{
-      triangle = triangle->NeighborCW(point);
-    }
-    EdgeEvent(tcx, ep, eq, triangle, point);
-  } else {
-    // This triangle crosses constraint so lets flippin start!
-    FlipEdgeEvent(tcx, ep, eq, triangle, point);
-  }
+		if (o1 == o2) {
+			// Need to decide if we are rotating CW or CCW to get to a triangle
+			// that will cross edge
+			if (o1 == CW) {
+				triangle = triangle->NeighborCCW(point);
+			} else {
+				triangle = triangle->NeighborCW(point);
+			}
+			EdgeEvent(tcx, ep, eq, triangle, point);
+		} else {
+			// This triangle crosses constraint so lets flippin start!
+			FlipEdgeEvent(tcx, ep, eq, triangle, point);
+		}
+	}
 }
 
 bool Sweep::IsEdgeSideOfTriangle(Triangle& triangle, Point& ep, Point& eq)

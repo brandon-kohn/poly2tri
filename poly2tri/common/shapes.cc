@@ -29,7 +29,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "shapes.h"
-#include <geometrix/utility/assert.hpp>
 #include <iostream>
 
 namespace p2t {
@@ -52,8 +51,8 @@ void Triangle::MarkNeighbor(Point* p1, Point* p2, Triangle* t)
     neighbors_[1] = t;
   else if ((p1 == points_[0] && p2 == points_[1]) || (p1 == points_[1] && p2 == points_[0]))
     neighbors_[2] = t;
-  else
-    GEOMETRIX_ASSERT(0);
+//  else
+//    GEOMETRIX_ASSERT(0);
 }
 
 // Exhaustive search to update neighbor pointers
@@ -147,7 +146,7 @@ void Triangle::Legalize(Point& opoint, Point& npoint)
     points_[2] = points_[1];
     points_[1] = &npoint;
   } else {
-    GEOMETRIX_ASSERT(0);
+    //GEOMETRIX_ASSERT(0);
   }
 }
 
@@ -160,7 +159,7 @@ int Triangle::Index(const Point* p)
   } else if (p == points_[2]) {
     return 2;
   }
-  GEOMETRIX_ASSERT(0);
+  //GEOMETRIX_ASSERT(0);
   return -1;
 }
 
@@ -220,7 +219,7 @@ Point* Triangle::PointCW(const Point& point)
   } else if (&point == points_[2]) {
     return points_[1];
   }
-  GEOMETRIX_ASSERT(0);
+  //GEOMETRIX_ASSERT(0);
   return NULL;
 }
 
@@ -234,7 +233,7 @@ Point* Triangle::PointCCW(const Point& point)
   } else if (&point == points_[2]) {
     return points_[0];
   }
-  GEOMETRIX_ASSERT(0);
+  //GEOMETRIX_ASSERT(0);
   return NULL;
 }
 

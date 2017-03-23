@@ -1,30 +1,31 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.3.0)
+cmake_minimum_required(VERSION 3.0.2)
 
 # Build Properties
-SET(CMAKE_INSTALL_INCDIR "include/poly2tri" CACHE PATH "Default relative include path.")
-SET(CMAKE_INSTALL_LIBDIR "lib${LIB_SUFFIX}" CACHE PATH "Default relative lib path.")
+set(CMAKE_INSTALL_INCLUDEDIR "include" CACHE PATH "Default relative include path.")
+set(CMAKE_INSTALL_LIBDIR "lib" CACHE PATH "Default relative lib path.")
 
 # Targets
 # NOTE: Only static libs supported as STL are part of the interface.
-PROJECT(poly2tri)
-SET(HEADERS poly2tri/common/shapes.h
+project(poly2tri)
+set(HEADERS poly2tri/common/shapes.h
             poly2tri/sweep/advancing_front.h
             poly2tri/sweep/cdt.h
             poly2tri/sweep/sweep.h
             poly2tri/sweep/sweep_context.h
             poly2tri/poly2tri.h)
-SET(SOURCES poly2tri/common/shapes.cc
+set(SOURCES poly2tri/common/shapes.cc
             poly2tri/sweep/advancing_front.cc
             poly2tri/sweep/cdt.cc
             poly2tri/sweep/sweep.cc
             poly2tri/sweep/sweep_context.cc)
-ADD_LIBRARY(poly2tri STATIC ${SOURCES} ${HEADERS})
-INCLUDE_DIRECTORIES(poly2tri poly2tri/common poly2tri/sweep)
+add_library(${PROJECT_NAME} STATIC ${SOURCES} ${HEADERS})
+set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "d")
+include_directories(poly2tri poly2tri/common poly2tri/sweep)
             
 # Deployment
-INSTALL ( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/poly2tri/
-          DESTINATION ${CMAKE_INSTALL_INCDIR}
+install ( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/poly2tri/
+          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/poly2tri
           FILES_MATCHING PATTERN "*.h")
-INSTALL (TARGETS poly2tri
+install (TARGETS ${PROJECT_NAME}
          ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
          LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")

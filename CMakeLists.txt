@@ -33,7 +33,7 @@ add_library(${PROJECT_NAME} STATIC ${SOURCES} ${HEADERS})
 set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties (${PROJECT_NAME} PROPERTIES VERSION ${POLY2TRI_VERSION_STRING})
 target_include_directories(poly2tri INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/poly2tri>
+  $<BUILD_INTERFACE:${poly2tri_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
 )
 include_directories(poly2tri poly2tri/common poly2tri/sweep)

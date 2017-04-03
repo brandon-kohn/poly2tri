@@ -15,6 +15,11 @@ list(GET VERSION_RESULT 2 VERSION_PATCH)
 set (POLY2TRI_VERSION_STRING ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH})
 message(STATUS "Poly2tri version ${POLY2TRI_VERSION_STRING}.")
 
+if(MSVC AND NOT "${FORCE_MSVC_RUNTIME}" STREQUAL "")
+    message(STATUS "poly2tri: Forcing msvc runtime to ${FORCE_MSVC_RUNTIME}")
+    force_msvc_runtime()
+endif()
+
 # Targets
 # NOTE: Only static libs supported as STL are part of the interface.
 project(poly2tri)

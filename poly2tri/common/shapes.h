@@ -33,7 +33,7 @@
 #ifndef SHAPES_H
 #define SHAPES_H
 
-#include <poly2tri/poly2tri_export.h>
+#include "../poly2tri_export.h"
 #include <vector>
 #include <cstddef>
 #include <cmath>

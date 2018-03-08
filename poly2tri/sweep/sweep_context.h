@@ -32,6 +32,7 @@
 #ifndef SWEEP_CONTEXT_H
 #define SWEEP_CONTEXT_H
 
+#include "../poly2tri_export.h"
 #include <list>
 #include <vector>
 #include <cstddef>
@@ -48,7 +49,7 @@ struct Node;
 struct Edge;
 class AdvancingFront;
 
-class SweepContext {
+class POLY2TRI_API SweepContext {
 public:
 
 /// Constructor

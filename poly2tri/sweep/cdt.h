@@ -32,6 +32,7 @@
 #ifndef CDT_H
 #define CDT_H
 
+#include "../poly2tri_export.h"
 #include "advancing_front.h"
 #include "sweep_context.h"
 #include "sweep.h"
@@ -44,7 +45,7 @@
 
 namespace p2t {
 
-class CDT
+class POLY2TRI_API CDT
 {
 public:
 

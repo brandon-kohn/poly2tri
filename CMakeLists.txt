@@ -34,19 +34,29 @@ set(SOURCES poly2tri/common/shapes.cc
             poly2tri/sweep/cdt.cc
             poly2tri/sweep/sweep.cc
             poly2tri/sweep/sweep_context.cc)
-add_library(${PROJECT_NAME} STATIC ${SOURCES} ${HEADERS})
-set_target_properties(${PROJECT_NAME} PROPERTIES DEBUG_POSTFIX "d")
-set_target_properties (${PROJECT_NAME} PROPERTIES VERSION ${POLY2TRI_VERSION_STRING})
-target_include_directories(poly2tri INTERFACE
-  $<BUILD_INTERFACE:${poly2tri_SOURCE_DIR}>
-  $<INSTALL_INTERFACE:include>
-)
+
+set(POLY2TRI_STATIC_LIBRARY ${PROJECT_NAME}_static)
+set(POLY2TRI_SHARED_LIBRARY ${PROJECT_NAME})
+
+add_library(${POLY2TRI_SHARED_LIBRARY} SHARED ${SOURCES} ${HEADERS})
+set_target_properties(${POLY2TRI_SHARED_LIBRARY} PROPERTIES DEBUG_POSTFIX "d")
+target_compile_definitions(${RPMALLOC_SHARED_LIBRARY} PUBLIC -DPOLY2TRI_EXPORTS_API)
+set_target_properties (${POLY2TRI_SHARED_LIBRARY} PROPERTIES VERSION ${POLY2TRI_VERSION_STRING})
+target_include_directories(${POLY2TRI_SHARED_LIBRARY} INTERFACE $<BUILD_INTERFACE:${poly2tri_SOURCE_DIR}> $<INSTALL_INTERFACE:include>)
+
+add_library(${POLY2TRI_STATIC_LIBRARY} STATIC ${SOURCES} ${HEADERS})
+set_target_properties(${POLY2TRI_STATIC_LIBRARY} PROPERTIES DEBUG_POSTFIX "d")
+set_target_properties (${POLY2TRI_STATIC_LIBRARY} PROPERTIES VERSION ${POLY2TRI_VERSION_STRING})
+target_include_directories(${POLY2TRI_STATIC_LIBRARY} INTERFACE $<BUILD_INTERFACE:${poly2tri_SOURCE_DIR}> $<INSTALL_INTERFACE:include>)
+target_compile_definitions(${POLY2TRI_STATIC_LIBRARY} PUBLIC -DPOLY2TRI_STATIC_LIB)
+
 include_directories(poly2tri poly2tri/common poly2tri/sweep)
             
 # Deployment
 install ( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/poly2tri/
           DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/poly2tri
           FILES_MATCHING PATTERN "*.h")
-install (TARGETS ${PROJECT_NAME}
+install (TARGETS ${POLY2TRI_STATIC_LIBRARY} ${POLY2TRI_SHARED_LIBRARY}
+         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
          ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
          LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")

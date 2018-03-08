@@ -32,6 +32,7 @@
 #ifndef ADVANCED_FRONT_H
 #define ADVANCED_FRONT_H
 
+#include "../poly2tri_export.h"
 #include "../common/shapes.h"
 
 namespace p2t {
@@ -59,7 +60,7 @@ struct Node {
 };
 
 // Advancing front
-class AdvancingFront {
+class POLY2TRI_API AdvancingFront {
 public:
 
 AdvancingFront(Node& head, Node& tail);

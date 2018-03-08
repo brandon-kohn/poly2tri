@@ -33,6 +33,7 @@
 #ifndef SHAPES_H
 #define SHAPES_H
 
+#include <poly2tri/poly2tri_export.h>
 #include <vector>
 #include <cstddef>
 #include <cmath>
@@ -147,7 +148,7 @@ struct Edge {
 // Triangle-based data structures are know to have better performance than quad-edge structures
 // See: J. Shewchuk, "Triangle: Engineering a 2D Quality Mesh Generator and Delaunay Triangulator"
 //      "Triangulations in CGAL"
-class Triangle {
+class POLY2TRI_API Triangle {
 public:
 
 /// Constructor

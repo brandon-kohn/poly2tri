@@ -37,6 +37,7 @@
 #include <vector>
 #include <cstddef>
 #include <cmath>
+#include <exception>
 //#include <geometrix/utility/assert.hpp>
 
 namespace p2t {
@@ -118,6 +119,24 @@ struct Point {
     return len;
   }
 
+};
+	
+struct collinear_points_exception : std::exception
+{
+	collinear_points_exception(const Point& a, const Point& b, const Point& c)
+		: a(a)
+		, b(b)
+		, c(c)
+	{}
+
+	const char* what()
+	{
+		return "poly2tri: collinear points not supported";
+	}
+
+	Point a;
+	Point b;
+	Point c;
 };
 
 // Represents a simple polygon's edge

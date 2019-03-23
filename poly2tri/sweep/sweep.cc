@@ -122,7 +122,8 @@ void Sweep::EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangl
       triangle = &triangle->NeighborAcross(point);
       EdgeEvent( tcx, ep, *p1, triangle, *p1 );
     } else {
-      std::runtime_error("EdgeEvent - collinear points not supported");
+      //std::runtime_error("EdgeEvent - collinear points not supported");
+      throw collinear_points_exception(eq, *p1, ep);
       //GEOMETRIX_ASSERT(0);
     }
     return;
@@ -139,7 +140,8 @@ void Sweep::EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangl
       triangle = &triangle->NeighborAcross(point);
       EdgeEvent( tcx, ep, *p2, triangle, *p2 );
     } else {
-      std::runtime_error("EdgeEvent - collinear points not supported");
+      //std::runtime_error("EdgeEvent - collinear points not supported");
+      throw collinear_points_exception(eq, *p2, ep);
       //GEOMETRIX_ASSERT(0);
     }
     return;
@@ -718,7 +720,7 @@ void Sweep::FlipEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* t, 
       }
     } else {
       Orientation o = Orient2d(eq, op, ep);
-      t = &NextFlipTriangle(tcx, (int)o, *t, ot, p, op);
+      t = &NextFlipTriangle(tcx, o, *t, ot, p, op);
       FlipEdgeEvent(tcx, ep, eq, t, p);
     }
   } else {
@@ -728,7 +730,7 @@ void Sweep::FlipEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* t, 
   }
 }
 
-Triangle& Sweep::NextFlipTriangle(SweepContext& tcx, int o, Triangle& t, Triangle& ot, Point& p, Point& op)
+Triangle& Sweep::NextFlipTriangle(SweepContext& tcx, Orientation o, Triangle& t, Triangle& ot, Point& p, Point& op)
 {
   if (o == CCW) {
     // ot is not crossing edge after flip
@@ -784,13 +786,11 @@ void Sweep::FlipScanEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle&
 }
 
 Sweep::~Sweep() {
-
     // Clean up memory
     for(size_t i = 0; i < nodes_.size(); i++) {
         delete nodes_[i];
     }
-
 }
 
-}
+}//! namespace pt2;
 

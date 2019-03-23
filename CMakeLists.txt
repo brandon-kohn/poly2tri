@@ -4,6 +4,14 @@ cmake_minimum_required(VERSION 3.0.2)
 set(CMAKE_INSTALL_INCLUDEDIR "include" CACHE PATH "Default relative include path.")
 set(CMAKE_INSTALL_LIBDIR "lib" CACHE PATH "Default relative lib path.")
 
+find_package(Boost 1.65.1)
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+  link_directories(${Boost_LIBRARY_DIRS})
+  add_definitions(-DBOOST_RESULT_OF_USE_TR1_WITH_DECLTYPE_FALLBACK -D"BOOST_PARAMETER_MAX_ARITY=20")
+  message("Boost found: ${Boost_INCLUDE_DIRS}")
+endif()
+
 # Version 
 # Find '#define POLY2TRI_VERSION "x.x.z"' and extract version
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/poly2tri/version.hpp VERSION_FILE)
@@ -43,12 +51,14 @@ set_target_properties(${POLY2TRI_SHARED_LIBRARY} PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties (${POLY2TRI_SHARED_LIBRARY} PROPERTIES VERSION ${POLY2TRI_VERSION_STRING})
 target_compile_definitions(${POLY2TRI_SHARED_LIBRARY} PUBLIC -DPOLY2TRI_EXPORTS_API)
 target_include_directories(${POLY2TRI_SHARED_LIBRARY} INTERFACE $<BUILD_INTERFACE:${poly2tri_SOURCE_DIR}> $<INSTALL_INTERFACE:include>)
+target_link_libraries(${POLY2TRI_SHARED_LIBRARY} stk geometrix exact)
 
 add_library(${POLY2TRI_STATIC_LIBRARY} STATIC ${SOURCES} ${HEADERS})
 set_target_properties(${POLY2TRI_STATIC_LIBRARY} PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties (${POLY2TRI_STATIC_LIBRARY} PROPERTIES VERSION ${POLY2TRI_VERSION_STRING})
 target_include_directories(${POLY2TRI_STATIC_LIBRARY} INTERFACE $<BUILD_INTERFACE:${poly2tri_SOURCE_DIR}> $<INSTALL_INTERFACE:include>)
 target_compile_definitions(${POLY2TRI_STATIC_LIBRARY} PUBLIC -DPOLY2TRI_STATIC_LIB)
+target_link_libraries(${POLY2TRI_STATIC_LIBRARY} stk geometrix exact_static)
 
 include_directories(poly2tri poly2tri/common poly2tri/sweep)
            

@@ -40,6 +40,7 @@
 #define SWEEP_H
 
 #include "../poly2tri_export.h"
+#include "../common/orientation.h"
 #include <vector>
 
 namespace p2t {
@@ -245,7 +246,7 @@ private:
    * @param op - another point shared by both triangles
    * @return returns the triangle still intersecting the edge
    */
-  Triangle& NextFlipTriangle(SweepContext& tcx, int o, Triangle&  t, Triangle& ot, Point& p, Point& op);
+  Triangle& NextFlipTriangle(SweepContext& tcx, Orientation o, Triangle&  t, Triangle& ot, Point& p, Point& op);
 
    /**
      * When we need to traverse from one triangle to the next we need

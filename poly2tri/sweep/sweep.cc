@@ -391,8 +391,46 @@ bool Sweep::Legalize(SweepContext& tcx, Triangle& t)
   return false;
 }
 
+namespace {
+	bool IncircleOld(const Point& pa, const Point& pb, const Point& pc, const Point& pd)
+	{
+	  const double adx = pa.x - pd.x;
+	  const double ady = pa.y - pd.y;
+	  const double bdx = pb.x - pd.x;
+	  const double bdy = pb.y - pd.y;
+
+	  const double adxbdy = adx * bdy;
+	  const double bdxady = bdx * ady;
+	  const double oabd = adxbdy - bdxady;
+
+	  if (oabd <= 0)
+		return false;
+
+	  const double cdx = pc.x - pd.x;
+	  const double cdy = pc.y - pd.y;
+
+	  const double cdxady = cdx * ady;
+	  const double adxcdy = adx * cdy;
+	  const double ocad = cdxady - adxcdy;
+
+	  if (ocad <= 0)
+		return false;
+
+	  const double bdxcdy = bdx * cdy;
+	  const double cdxbdy = cdx * bdy;
+
+	  const double alift = adx * adx + ady * ady;
+	  const double blift = bdx * bdx + bdy * bdy;
+	  const double clift = cdx * cdx + cdy * cdy;
+
+	  const double det = alift * (bdxcdy - cdxbdy) + blift * ocad + clift * oabd;
+
+	  return det > 0;
+	}
+}
 bool Sweep::Incircle(const Point& pa, const Point& pb, const Point& pc, const Point& pd) const
 {
+#ifndef POLY2TRI_USE_EXACT
   const double adx = pa.x - pd.x;
   const double ady = pa.y - pd.y;
   const double bdx = pb.x - pd.x;
@@ -425,6 +463,21 @@ bool Sweep::Incircle(const Point& pa, const Point& pb, const Point& pc, const Po
   const double det = alift * (bdxcdy - cdxbdy) + blift * ocad + clift * oabd;
 
   return det > 0;
+#else
+	std::array<double, 2> a = { pa.x, pa.y };
+	std::array<double, 2> b = { pb.x, pb.y };
+	std::array<double, 2> c = { pc.x, pc.y };
+	std::array<double, 2> d = { pd.x, pd.y };
+	auto r = exact::in_circumcircle(a, b, c, d) != geometrix::oriented_right;
+
+#ifndef NDEBUG
+	std::array<geometrix::point<double, 2>, 3> trig = { geometrix::point<double,2>{a[0], a[1]}, geometrix::point<double,2>{b[0], b[1]}, geometrix::point<double,2>{c[0], c[1]} };
+	geometrix::point<double, 2> gd(d[0], d[1]);
+#endif
+
+	//GEOMETRIX_ASSERT(r == IncircleOld(pa, pb, pc, pd));
+	return r;
+#endif
 }
 
 void Sweep::RotateTrianglePair(Triangle& t, Point& p, Triangle& ot, Point& op) const

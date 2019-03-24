@@ -54,6 +54,19 @@ const double PI_3div4 = 3 * M_PI / 4;
 const double PI_div2 = 1.57079632679489661923;
 const double EPSILON = 1e-12;
 
+inline Orientation Orient2dInExact(const Point& pa, const Point& pb, const Point& pc)
+{
+  double detleft = (pa.x - pc.x) * (pb.y - pc.y);
+  double detright = (pa.y - pc.y) * (pb.x - pc.x);
+  double val = detleft - detright;
+  if (val > -EPSILON && val < EPSILON) {
+    return COLLINEAR;
+  } else if (val > 0) {
+    return CCW;
+  }
+  return CW;
+}
+
 /**
  * Formula to calculate signed area<br>
  * Positive if CCW<br>
@@ -64,24 +77,30 @@ const double EPSILON = 1e-12;
  *              =  (x1-x3)*(y2-y3) - (y1-y3)*(x2-x3)
  * </pre>
  */
-Orientation Orient2d(const Point& pa, const Point& pb, const Point& pc)
+inline Orientation Orient2d(const Point& pa, const Point& pb, const Point& pc)
 {
 #ifndef POLY2TRI_USE_EXACT
   double detleft = (pa.x - pc.x) * (pb.y - pc.y);
   double detright = (pa.y - pc.y) * (pb.x - pc.x);
   double val = detleft - detright;
-  if (val > -EPSILON && val < EPSILON) {
+  if (val > -EPSILON && val < EPSILON) 
+  {
     return COLLINEAR;
-  } else if (val > 0) {
+  }
+  else if (val > 0) 
+  {
     return CCW;
   }
+  
   return CW;
 #else
 	std::array<double, 2> a = { pa.x, pa.y };
 	std::array<double, 2> b = { pb.x, pb.y };
 	std::array<double, 2> c = { pc.x, pc.y };
 
-	return static_cast<Orientation>(exact::orientation(a, b, c));
+	auto r = static_cast<Orientation>(exact::orientation(a, b, c));
+    //GEOMETRIX_ASSERT(Orient2dInExact(pa, pb, pc) == (Orientation)r);
+    return r;
 #endif
 }
 
@@ -119,7 +138,7 @@ bool InScanArea(Point& pa, Point& pb, Point& pc, Point& pd)
 
 */
 
-bool InScanAreaInexact(const Point& pa, const Point& pb, const Point& pc, const Point& pd)
+inline bool InScanAreaInexact(const Point& pa, const Point& pb, const Point& pc, const Point& pd)
 {
 	double oadb = (pa.x - pb.x)*(pd.y - pb.y) - (pd.x - pb.x)*(pa.y - pb.y);
 	if (oadb >= -EPSILON) {
@@ -133,7 +152,7 @@ bool InScanAreaInexact(const Point& pa, const Point& pb, const Point& pc, const 
 	return true;
 }
 
-bool InScanArea(const Point& pa, const Point& pb, const Point& pc, const Point& pd)
+inline bool InScanArea(const Point& pa, const Point& pb, const Point& pc, const Point& pd)
 {
 #ifndef POLY2TRI_USE_EXACT
   double oadb = (pa.x - pb.x)*(pd.y - pb.y) - (pd.x - pb.x)*(pa.y - pb.y);
@@ -153,15 +172,22 @@ bool InScanArea(const Point& pa, const Point& pb, const Point& pc, const Point& 
 	std::array<double, 2> d = { pd.x, pd.y };
 
 	if (exact::orientation(b, a, d) != geometrix::oriented_right)
-		return false;
+    {
+        //GEOMETRIX_ASSERT(!InScanAreaInexact(pa,pb,pc,pd));
+        return false;
+    }
+	
+    if (exact::orientation(c, a, d) != geometrix::oriented_left)
+    {
+        //GEOMETRIX_ASSERT(!InScanAreaInexact(pa,pb,pc,pd));
+        return false;
+    }
 
-	if (exact::orientation(c, a, d) != geometrix::oriented_left)
-		return false;
-
+    //GEOMETRIX_ASSERT(InScanAreaInexact(pa,pb,pc,pd));
 	return true;
 #endif
 }
 
-}
+}//! namespace p2t;
 
 #endif

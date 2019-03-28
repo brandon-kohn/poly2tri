@@ -470,12 +470,12 @@ bool Sweep::Incircle(const Point& pa, const Point& pb, const Point& pc, const Po
 	std::array<double, 2> d = { pd.x, pd.y };
 	auto r = exact::in_circumcircle(a, b, c, d) != geometrix::oriented_right;
 
-#ifndef NDEBUG
-	std::array<geometrix::point<double, 2>, 3> trig = { geometrix::point<double,2>{a[0], a[1]}, geometrix::point<double,2>{b[0], b[1]}, geometrix::point<double,2>{c[0], c[1]} };
-	geometrix::point<double, 2> gd(d[0], d[1]);
-#endif
-
+//#ifndef NDEBUG
+//	std::array<geometrix::point<double, 2>, 3> trig = { geometrix::point<double,2>{a[0], a[1]}, geometrix::point<double,2>{b[0], b[1]}, geometrix::point<double,2>{c[0], c[1]} };
+//	geometrix::point<double, 2> gd(d[0], d[1]);
 	//GEOMETRIX_ASSERT(r == IncircleOld(pa, pb, pc, pd));
+//#endif
+
 	return r;
 #endif
 }

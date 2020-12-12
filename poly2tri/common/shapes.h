@@ -139,6 +139,13 @@ struct collinear_points_exception : std::exception
 	Point c;
 };
 
+struct degenerate_triangle_exception : collinear_points_exception 
+{
+    degenerate_triangle_exception(const Point& a, const Point& b, const Point& c)
+        : collinear_points_exception(a, b, c)
+    {}
+};
+
 // Represents a simple polygon's edge
 struct Edge {
 

@@ -1,5 +1,5 @@
 /*
- * Poly2Tri Copyright (c) 2009-2018, Poly2Tri Contributors
+ * Poly2Tri Copyright (c) 2009-2022, Poly2Tri Contributors
  * https://github.com/jhasse/poly2tri
  *
  * All rights reserved.
@@ -31,86 +31,23 @@
 
 #pragma once
 
-#include "../poly2tri_export.h"
-#include "../common/shapes.h"
+#if defined(_WIN32)
+#  define P2T_COMPILER_DLLEXPORT __declspec(dllexport)
+#  define P2T_COMPILER_DLLIMPORT __declspec(dllimport)
+#elif defined(__GNUC__)
+#  define P2T_COMPILER_DLLEXPORT __attribute__ ((visibility ("default")))
+#  define P2T_COMPILER_DLLIMPORT __attribute__ ((visibility ("default")))
+#else
+#  define P2T_COMPILER_DLLEXPORT
+#  define P2T_COMPILER_DLLIMPORT
+#endif
 
-namespace p2t {
-
-struct Node;
-
-// Advancing front node
-struct Node {
-  Point* point;
-  Triangle* triangle;
-
-  Node* next;
-  Node* prev;
-
-  double value;
-
-  Node(Point& p) : point(&p), triangle(NULL), next(NULL), prev(NULL), value(p.x)
-  {
-  }
-
-  Node(Point& p, Triangle& t) : point(&p), triangle(&t), next(NULL), prev(NULL), value(p.x)
-  {
-  }
-
-};
-
-// Advancing front
-class POLY2TRI_API AdvancingFront {
-public:
-
-AdvancingFront(Node& head, Node& tail);
-// Destructor
-~AdvancingFront();
-
-Node* head();
-void set_head(Node* node);
-Node* tail();
-void set_tail(Node* node);
-Node* search();
-void set_search(Node* node);
-
-/// Locate insertion point along advancing front
-Node* LocateNode(double x);
-
-Node* LocatePoint(const Point* point);
-
-private:
-
-Node* head_, *tail_, *search_node_;
-
-Node* FindSearchNode(double x);
-};
-
-inline Node* AdvancingFront::head()
-{
-  return head_;
-}
-inline void AdvancingFront::set_head(Node* node)
-{
-  head_ = node;
-}
-
-inline Node* AdvancingFront::tail()
-{
-  return tail_;
-}
-inline void AdvancingFront::set_tail(Node* node)
-{
-  tail_ = node;
-}
-
-inline Node* AdvancingFront::search()
-{
-  return search_node_;
-}
-
-inline void AdvancingFront::set_search(Node* node)
-{
-  search_node_ = node;
-}
-
-}
+#ifndef P2T_DLL_SYMBOL
+#  if defined(P2T_STATIC_EXPORTS)
+#    define P2T_DLL_SYMBOL
+#  elif defined(P2T_SHARED_EXPORTS)
+#    define P2T_DLL_SYMBOL P2T_COMPILER_DLLEXPORT
+#  else
+#    define P2T_DLL_SYMBOL P2T_COMPILER_DLLIMPORT
+#  endif
+#endif

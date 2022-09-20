@@ -1,6 +1,6 @@
 /*
- * Poly2Tri Copyright (c) 2009-2010, Poly2Tri Contributors
- * http://code.google.com/p/poly2tri/
+ * Poly2Tri Copyright (c) 2009-2018, Poly2Tri Contributors
+ * https://github.com/jhasse/poly2tri
  *
  * All rights reserved.
  *
@@ -28,12 +28,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdexcept>
 #include "sweep.h"
 #include "sweep_context.h"
 #include "advancing_front.h"
 #include "../common/utils.h"
-//#include <geometrix/utility/assert.hpp>
+
+#include <cassert>
+#include <stdexcept>
 
 namespace p2t {
 
@@ -41,7 +42,7 @@ namespace p2t {
 void Sweep::Triangulate(SweepContext& tcx)
 {
   tcx.InitTriangulation();
-  tcx.CreateAdvancingFront(nodes_);
+  tcx.CreateAdvancingFront();
   // Sweep points; build mesh
   SweepPoints(tcx);
   // Clean up
@@ -53,8 +54,8 @@ void Sweep::SweepPoints(SweepContext& tcx)
   for (size_t i = 1; i < tcx.point_count(); i++) {
     Point& point = *tcx.GetPoint(i);
     Node* node = &PointEvent(tcx, point);
-    for (unsigned int i = 0; i < point.edge_list.size(); i++) {
-      EdgeEvent(tcx, point.edge_list[i], node);
+    for (auto& j : point.edge_list) {
+      EdgeEvent(tcx, j, node);
     }
   }
 }
@@ -64,17 +65,25 @@ void Sweep::FinalizationPolygon(SweepContext& tcx)
   // Get an Internal triangle to start with
   Triangle* t = tcx.front()->head()->next->triangle;
   Point* p = tcx.front()->head()->next->point;
-  while (!t->GetConstrainedEdgeCW(*p)) {
+  while (t && !t->GetConstrainedEdgeCW(*p)) {
     t = t->NeighborCCW(*p);
   }
 
   // Collect interior triangles constrained by edges
+  if (t) {
   tcx.MeshClean(*t);
+}
 }
 
 Node& Sweep::PointEvent(SweepContext& tcx, Point& point)
 {
-  Node& node = tcx.LocateNode(point);
+  Node* node_ptr = tcx.LocateNode(point);
+  if (!node_ptr || !node_ptr->point || !node_ptr->next || !node_ptr->next->point)
+  {
+    throw std::runtime_error("PointEvent - null node");
+  }
+
+  Node& node = *node_ptr;
   Node& new_node = NewFrontTriangle(tcx, point, node);
 
   // Only need to check +epsilon since point never have smaller
@@ -135,7 +144,7 @@ void Sweep::EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangl
 					// We are modifying the constraint maybe it would be better to
 					// not change the given constraint and just keep a variable for the new constraint
 					tcx.edge_event.constrained_edge->q = p1;
-					triangle = &triangle->NeighborAcross( point );
+					triangle = triangle->NeighborAcross( point );
 					if( triangle )
 					{
 						EdgeEvent( tcx, ep, *p1, triangle, *p1 );
@@ -164,7 +173,7 @@ void Sweep::EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangl
 						// We are modifying the constraint maybe it would be better to
 						// not change the given constraint and just keep a variable for the new constraint
 						tcx.edge_event.constrained_edge->q = p2;
-						triangle = &triangle->NeighborAcross( point );
+						triangle = triangle->NeighborAcross( point );
 						if( triangle )
 						{
 							EdgeEvent( tcx, ep, *p2, triangle, *p2 );
@@ -206,6 +215,7 @@ void Sweep::EdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* triangl
 				else
 				{
 					// This triangle crosses constraint so lets flippin start!
+    assert(triangle);
 					FlipEdgeEvent( tcx, ep, eq, triangle, point );
 				}
 			}
@@ -282,7 +292,6 @@ void Sweep::Fill(SweepContext& tcx, Node& node)
   if (!Legalize(tcx, *triangle)) {
     tcx.MapTriangleToNodes(*triangle);
   }
-
 }
 
 void Sweep::FillAdvancingFront(SweepContext& tcx, Node& n)
@@ -291,7 +300,7 @@ void Sweep::FillAdvancingFront(SweepContext& tcx, Node& n)
   // Fill right holes
   Node* node = n.next;
 
-  while (node->next) {
+  while (node && node->next) {
     // if HoleAngle exceeds 90 degrees then break.
     if (LargeHole_DontFill(node)) break;
     Fill(tcx, *node);
@@ -301,7 +310,7 @@ void Sweep::FillAdvancingFront(SweepContext& tcx, Node& n)
   // Fill left holes
   node = n.prev;
 
-  while (node->prev) {
+  while (node && node->prev) {
     // if HoleAngle exceeds 90 degrees then break.
     if (LargeHole_DontFill(node)) break;
     Fill(tcx, *node);
@@ -318,6 +327,35 @@ void Sweep::FillAdvancingFront(SweepContext& tcx, Node& n)
 }
 
 // True if HoleAngle exceeds 90 degrees.
+// LargeHole_DontFill checks if the advancing front has a large hole.
+// A "Large hole" is a triangle formed by a sequence of points in the advancing
+// front where three neighbor points form a triangle.
+// And angle between left-top, bottom, and right-top points is more than 90 degrees.
+// The first part of the algorithm reviews only three neighbor points, e.g. named A, B, C.
+// Additional part of this logic reviews a sequence of 5 points -
+// additionally reviews one point before and one after the sequence of three (A, B, C),
+// e.g. named X and Y.
+// In this case, angles are XBC and ABY and this if angles are negative or more
+// than 90 degrees LargeHole_DontFill returns true.
+// But there is a configuration when ABC has a negative angle but XBC or ABY is less
+// than 90 degrees and positive.
+// Then function LargeHole_DontFill return false and initiates filling.
+// This filling creates a triangle ABC and adds it to the advancing front.
+// But in the case when angle ABC is negative this triangle goes inside the advancing front
+// and can intersect previously created triangles.
+// This triangle leads to making wrong advancing front and problems in triangulation in the future.
+// Looks like such a triangle should not be created.
+// The simplest way to check and fix it is to check an angle ABC.
+// If it is negative LargeHole_DontFill should return true and
+// not initiate creating the ABC triangle in the advancing front.
+// X______A         Y
+//        \        /
+//         \      /
+//          \ B  /
+//           |  /
+//           | /
+//           |/
+//           C
 bool Sweep::LargeHole_DontFill(const Node* node) const {
 
   const Node* nextNode = node->next;
@@ -325,18 +363,26 @@ bool Sweep::LargeHole_DontFill(const Node* node) const {
   if (!AngleExceeds90Degrees(node->point, nextNode->point, prevNode->point))
           return false;
 
+  if (AngleIsNegative(node->point, nextNode->point, prevNode->point))
+          return true;
+
   // Check additional points on front.
   const Node* next2Node = nextNode->next;
   // "..Plus.." because only want angles on same side as point being added.
-  if ((next2Node != NULL) && !AngleExceedsPlus90DegreesOrIsNegative(node->point, next2Node->point, prevNode->point))
+  if ((next2Node != nullptr) && !AngleExceedsPlus90DegreesOrIsNegative(node->point, next2Node->point, prevNode->point))
           return false;
 
   const Node* prev2Node = prevNode->prev;
   // "..Plus.." because only want angles on same side as point being added.
-  if ((prev2Node != NULL) && !AngleExceedsPlus90DegreesOrIsNegative(node->point, nextNode->point, prev2Node->point))
+  if ((prev2Node != nullptr) && !AngleExceedsPlus90DegreesOrIsNegative(node->point, nextNode->point, prev2Node->point))
           return false;
 
   return true;
+}
+
+bool Sweep::AngleIsNegative(const Point* origin, const Point* pa, const Point* pb) const {
+    const double angle = Angle(origin, pa, pb);
+    return angle < 0;
 }
 
 bool Sweep::AngleExceeds90Degrees(const Point* origin, const Point* pa, const Point* pb) const {
@@ -730,7 +776,6 @@ void Sweep::FillRightConcaveEdgeEvent(SweepContext& tcx, Edge* edge, Node& node)
       }
     }
   }
-
 }
 
 void Sweep::FillRightConvexEdgeEvent(SweepContext& tcx, Edge* edge, Node& node)
@@ -811,12 +856,17 @@ void Sweep::FillLeftConcaveEdgeEvent(SweepContext& tcx, Edge* edge, Node& node)
       }
     }
   }
-
 }
 
 void Sweep::FlipEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle* t, Point& p)
 {
-  Triangle& ot = t->NeighborAcross(p);
+  assert(t);
+  Triangle* ot_ptr = t->NeighborAcross(p);
+  if (ot_ptr == nullptr)
+  {
+    throw std::runtime_error("FlipEdgeEvent - null neighbor across");
+  }
+  Triangle& ot = *ot_ptr;
   Point& op = *ot.OppositePoint(*t, p);
 
   if (InScanArea(p, *t->PointCCW(p), *t->PointCW(p), op)) {
@@ -882,10 +932,26 @@ Point& Sweep::NextFlipPoint(Point& ep, Point& eq, Triangle& ot, Point& op)
 void Sweep::FlipScanEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle& flip_triangle,
                               Triangle& t, Point& p)
 {
-  Triangle& ot = t.NeighborAcross(p);
-  Point& op = *ot.OppositePoint(t, p);
+  Triangle* ot_ptr = t.NeighborAcross(p);
+  if (ot_ptr == nullptr) {
+    throw std::runtime_error("FlipScanEdgeEvent - null neighbor across");
+  }
 
-  if (InScanArea(eq, *flip_triangle.PointCCW(eq), *flip_triangle.PointCW(eq), op)) {
+  Point* op_ptr = ot_ptr->OppositePoint(t, p);
+  if (op_ptr == nullptr) {
+    throw std::runtime_error("FlipScanEdgeEvent - null opposing point");
+  }
+
+  Point* p1 = flip_triangle.PointCCW(eq);
+  Point* p2 = flip_triangle.PointCW(eq);
+  if (p1 == nullptr || p2 == nullptr) {
+    throw std::runtime_error("FlipScanEdgeEvent - null on either of points");
+  }
+
+  Triangle& ot = *ot_ptr;
+  Point& op = *op_ptr;
+
+  if (InScanArea(eq, *p1, *p2, op)) {
     // flip with new edge op->eq
     FlipEdgeEvent(tcx, eq, op, &ot, op);
     // TODO: Actually I just figured out that it should be possible to
@@ -903,8 +969,8 @@ void Sweep::FlipScanEdgeEvent(SweepContext& tcx, Point& ep, Point& eq, Triangle&
 
 Sweep::~Sweep() {
     // Clean up memory
-    for(size_t i = 0; i < nodes_.size(); i++) {
-        delete nodes_[i];
+    for (auto& node : nodes_) {
+      delete node;
     }
 }
 

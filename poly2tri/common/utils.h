@@ -1,6 +1,6 @@
 /*
- * Poly2Tri Copyright (c) 2009-2010, Poly2Tri Contributors
- * http://code.google.com/p/poly2tri/
+ * Poly2Tri Copyright (c) 2009-2018, Poly2Tri Contributors
+ * https://github.com/jhasse/poly2tri
  *
  * All rights reserved.
  *
@@ -29,15 +29,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef UTILS_H
-#define UTILS_H
+#pragma once
 
 // Otherwise #defines like M_PI are undeclared under Visual Studio
 #define _USE_MATH_DEFINES
 #define POLY2TRI_USE_EXACT
 #include "orientation.h"
+#include <cmath>
 #include <exception>
-#include <math.h>
 
 #ifdef POLY2TRI_USE_EXACT
 #include <exact/predicates.hpp>
@@ -54,7 +53,7 @@ const double PI_3div4 = 3 * M_PI / 4;
 const double PI_div2 = 1.57079632679489661923;
 const double EPSILON = 1e-12;
 
-inline Orientation Orient2dInExact(const Point& pa, const Point& pb, const Point& pc)
+inline Orientation Orient2dInexact(const Point& pa, const Point& pb, const Point& pc)
 {
   double detleft = (pa.x - pc.x) * (pb.y - pc.y);
   double detright = (pa.y - pc.y) * (pb.x - pc.x);
@@ -83,8 +82,11 @@ inline Orientation Orient2d(const Point& pa, const Point& pb, const Point& pc)
   double detleft = (pa.x - pc.x) * (pb.y - pc.y);
   double detright = (pa.y - pc.y) * (pb.x - pc.x);
   double val = detleft - detright;
-  if (val > -EPSILON && val < EPSILON) 
-  {
+
+// Using a tolerance here fails on concave-by-subepsilon boundaries
+//   if (val > -EPSILON && val < EPSILON) {
+// Using == on double makes -Wfloat-equal warnings yell at us
+  if (std::fpclassify(val) == FP_ZERO) {
     return COLLINEAR;
   }
   else if (val > 0) 
@@ -99,7 +101,7 @@ inline Orientation Orient2d(const Point& pa, const Point& pb, const Point& pc)
 	std::array<double, 2> c = { pc.x, pc.y };
 
 	auto r = static_cast<Orientation>(exact::orientation(a, b, c));
-    //GEOMETRIX_ASSERT(Orient2dInExact(pa, pb, pc) == (Orientation)r);
+    //GEOMETRIX_ASSERT(Orient2dInexact(pa, pb, pc) == (Orientation)r);
     return r;
 #endif
 }
@@ -190,4 +192,3 @@ inline bool InScanArea(const Point& pa, const Point& pb, const Point& pc, const 
 
 }//! namespace p2t;
 
-#endif

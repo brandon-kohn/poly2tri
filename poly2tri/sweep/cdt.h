@@ -1,6 +1,6 @@
 /*
- * Poly2Tri Copyright (c) 2009-2010, Poly2Tri Contributors
- * http://code.google.com/p/poly2tri/
+ * Poly2Tri Copyright (c) 2009-2018, Poly2Tri Contributors
+ * https://github.com/jhasse/poly2tri
  *
  * All rights reserved.
  *
@@ -29,13 +29,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CDT_H
-#define CDT_H
+#pragma once
 
 #include "../poly2tri_export.h"
 #include "advancing_front.h"
 #include "sweep_context.h"
 #include "sweep.h"
+
+#include "../common/dll_symbol.h"
 
 /**
  *
@@ -105,5 +106,3 @@ public:
 };
 
 }
-
-#endif

@@ -1,6 +1,6 @@
 /*
- * Poly2Tri Copyright (c) 2009-2010, Poly2Tri Contributors
- * http://code.google.com/p/poly2tri/
+ * Poly2Tri Copyright (c) 2009-2022, Poly2Tri Contributors
+ * https://github.com/jhasse/poly2tri
  *
  * All rights reserved.
  *
@@ -28,21 +28,37 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <cstdlib>
-#include <GLFW/glfw3.h>
-#include <time.h>
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <algorithm>
-#include <iterator>
-#include <iostream>
-using namespace std;
+#include <poly2tri/poly2tri.h>
 
-#include "../poly2tri/poly2tri.h"
+#include <GLFW/glfw3.h>
+
+#include <algorithm>
+#include <cassert>
+#include <cstdlib>
+#include <ctime>
+#include <exception>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <limits>
+#include <list>
+#include <numeric>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
+
+using namespace std;
 using namespace p2t;
 
-void Init();
+bool ParseFile(string filename, vector<Point*>& out_polyline, vector<vector<Point*>>& out_holes,
+               vector<Point*>& out_steiner);
+std::pair<Point, Point> BoundingBox(const std::vector<Point*>& polyline);
+void GenerateRandomPointDistribution(size_t num_points, double min, double max,
+                                     vector<Point*>& out_polyline,
+                                     vector<vector<Point*>>& out_holes,
+                                     vector<Point*>& out_steiner);
+void Init(int window_width, int window_height);
 void ShutDown(int return_code);
 void MainLoop(const double zoom);
 void Draw(const double zoom);
@@ -52,13 +68,16 @@ double StringToDouble(const std::string& s);
 double Random(double (*fun)(double), double xmin, double xmax);
 double Fun(double x);
 
-/// Dude hole examples
-vector<Point*> CreateHeadHole();
-vector<Point*> CreateChestHole();
+double rotate_y = 0.0,
+       rotate_z = 0.0;
+const double rotations_per_tick = 0.2;
 
-float rotate_y = 0,
-      rotate_z = 0;
-const float rotations_per_tick = .2;
+/// Default window size
+constexpr int default_window_width = 800;
+constexpr int default_window_height = 600;
+
+/// Autozoom border (percentage)
+const double autozoom_border = 0.05;
 
 /// Screen center x
 double cx = 0.0;
@@ -70,7 +89,9 @@ vector<Triangle*> triangles;
 /// Triangle map
 list<Triangle*> map;
 /// Polylines
-vector< vector<Point*> > polylines;
+vector<Point*> polyline;
+vector<vector<Point*>> holes;
+vector<Point*> steiner;
 
 /// Draw the entire triangle map?
 bool draw_map = false;
@@ -79,81 +100,76 @@ bool random_distribution = false;
 
 GLFWwindow* window = NULL;
 
-template <class C> void FreeClear( C & cntr ) {
-    for ( typename C::iterator it = cntr.begin();
-              it != cntr.end(); ++it ) {
-        delete * it;
-    }
-    cntr.clear();
+template <class C> void FreeClear(C& cntr)
+{
+  for (typename C::iterator it = cntr.begin(); it != cntr.end(); ++it) {
+    delete *it;
+  }
+  cntr.clear();
 }
 
 int main(int argc, char* argv[])
 {
-
-  int num_points = 0;
+  string filename;
+  size_t num_points = 0u;
   double max, min;
   double zoom;
 
-  if (argc != 5) {
+  if (argc != 2 && argc != 5) {
     cout << "-== USAGE ==-" << endl;
-    cout << "Load Data File: p2t filename center_x center_y zoom" << endl;
-    cout << "Example: ./build/p2t testbed/data/dude.dat 500 500 1" << endl;
+    cout << "Load Data File: p2t <filename> <center_x> <center_y> <zoom>" << endl;
+    cout << "  Example: build/testbed/p2t testbed/data/dude.dat 350 500 3" << endl;
+    cout << "Load Data File with Auto-Zoom: p2t <filename>" << endl;
+    cout << "  Example: build/testbed/p2t testbed/data/nazca_monkey.dat" << endl;
+    cout << "Generate Random Polygon: p2t random <num_points> <box_radius> <zoom>" << endl;
+    cout << "  Example: build/testbed/p2t random 100 1 500" << endl;
     return 1;
   }
 
-  if(string(argv[1]) == "random") {
+  // If true, adjust the zoom settings to fit the input geometry to the window
+  const bool autozoom = (argc == 2);
+
+  if (!autozoom && string(argv[1]) == "random") {
     num_points = atoi(argv[2]);
     random_distribution = true;
     char* pEnd;
     max = strtod(argv[3], &pEnd);
     min = -max;
-    cx = cy = 0;
+    cx = cy = 0.0;
     zoom = atof(argv[4]);
   } else {
-    zoom = atof(argv[4]);
-    cx = atof(argv[2]);
-    cy = atof(argv[3]);
-  }
-
-  vector<p2t::Point*> polyline;
-
-  if(random_distribution) {
-    // Create a simple bounding box
-    polyline.push_back(new Point(min,min));
-    polyline.push_back(new Point(min,max));
-    polyline.push_back(new Point(max,max));
-    polyline.push_back(new Point(max,min));
-  } else {
-    // Load pointset from file
-
-    // Parse and tokenize data file
-    string line;
-    ifstream myfile(argv[1]);
-    if (myfile.is_open()) {
-      while (!myfile.eof()) {
-        getline(myfile, line);
-        if (line.size() == 0) {
-          break;
-        }
-        istringstream iss(line);
-        vector<string> tokens;
-        copy(istream_iterator<string>(iss), istream_iterator<string>(),
-             back_inserter<vector<string> >(tokens));
-        double x = StringToDouble(tokens[0]);
-        double y = StringToDouble(tokens[1]);
-        polyline.push_back(new Point(x, y));
-        num_points++;
-      }
-      myfile.close();
-    } else {
-      cout << "File not opened" << endl;
+    filename = string(argv[1]);
+    if (!autozoom) {
+      cx = atof(argv[2]);
+      cy = atof(argv[3]);
+      zoom = atof(argv[4]);
     }
   }
 
-  cout << "Number of constrained edges = " << polyline.size() << endl;
-  polylines.push_back(polyline);
+  if (random_distribution) {
+    GenerateRandomPointDistribution(num_points, min, max, polyline, holes, steiner);
+  } else {
+    // Load pointset from file
+    if (!ParseFile(filename, polyline, holes, steiner)) {
+      return 2;
+    }
+  }
 
-  Init();
+  if (autozoom) {
+    assert(0.0 <= autozoom_border && autozoom_border < 1.0);
+    const auto bbox = BoundingBox(polyline);
+    Point center = bbox.first + bbox.second;
+    center *= 0.5;
+    cx = center.x;
+    cy = center.y;
+    Point sides = bbox.second - bbox.first;
+    zoom = 2.0 * (1.0 - autozoom_border) * std::min((double)default_window_width / sides.x, (double)default_window_height / sides.y);
+    std::cout << "center_x = " << cx << std::endl;
+    std::cout << "center_y = " << cy << std::endl;
+    std::cout << "zoom = " << zoom << std::endl;
+  }
+
+  Init(default_window_width, default_window_height);
 
   /*
    * Perform triangulation!
@@ -169,29 +185,14 @@ int main(int argc, char* argv[])
   CDT* cdt = new CDT(polyline);
 
   /*
-   * STEP 2: Add holes or Steiner points if necessary
+   * STEP 2: Add holes or Steiner points
    */
-
-  string s(argv[1]);
-  if(s.find("dude.dat", 0) != string::npos) {
-    // Add head hole
-    vector<Point*> head_hole = CreateHeadHole();
-    num_points += head_hole.size();
-    cdt->AddHole(head_hole);
-    // Add chest hole
-    vector<Point*> chest_hole = CreateChestHole();
-    num_points += chest_hole.size();
-    cdt->AddHole(chest_hole);
-    polylines.push_back(head_hole);
-    polylines.push_back(chest_hole);
-  } else if (random_distribution) {
-    max-=(1e-4);
-    min+=(1e-4);
-    for(int i = 0; i < num_points; i++) {
-      double x = Random(Fun, min, max);
-      double y = Random(Fun, min, max);
-      cdt->AddPoint(new Point(x, y));
-    }
+  for (const auto& hole : holes) {
+    assert(!hole.empty());
+    cdt->AddHole(hole);
+  }
+  for (const auto& s : steiner) {
+    cdt->AddPoint(s);
   }
 
   /*
@@ -203,35 +204,136 @@ int main(int argc, char* argv[])
 
   triangles = cdt->GetTriangles();
   map = cdt->GetMap();
+  const size_t points_in_holes =
+      std::accumulate(holes.cbegin(), holes.cend(), size_t(0),
+                      [](size_t cumul, const vector<Point*>& hole) { return cumul + hole.size(); });
 
-  cout << "Number of points = " << num_points << endl;
+  cout << "Number of primary constrained edges = " << polyline.size() << endl;
+  cout << "Number of holes = " << holes.size() << endl;
+  cout << "Number of constrained edges in holes = " << points_in_holes << endl;
+  cout << "Number of Steiner points = " << steiner.size() << endl;
+  cout << "Total number of points = " << (polyline.size() + points_in_holes + steiner.size())
+       << endl;
   cout << "Number of triangles = " << triangles.size() << endl;
-  cout << "Elapsed time (ms) = " << dt*1000.0 << endl;
+  cout << "Is Delaunay = " << (IsDelaunay(triangles) ? "true" : "false") << endl;
+  cout << "Elapsed time (ms) = " << dt * 1000.0 << endl;
 
   MainLoop(zoom);
 
   // Cleanup
-
   delete cdt;
-
-  // Free points
-  for(int i = 0; i < polylines.size(); i++) {
-    vector<Point*> poly = polylines[i];
-    FreeClear(poly);
+  FreeClear(polyline);
+  for (vector<Point*>& hole : holes) {
+    FreeClear(hole);
   }
+  FreeClear(steiner);
 
   ShutDown(0);
   return 0;
 }
 
-void Init()
+bool ParseFile(string filename, vector<Point*>& out_polyline, vector<vector<Point*>>& out_holes,
+               vector<Point*>& out_steiner)
 {
-  const int window_width = 800,
-            window_height = 600;
+  enum ParserState {
+    Polyline,
+    Hole,
+    Steiner,
+  };
+  ParserState state = Polyline;
+  vector<Point*>* hole = nullptr;
+  try {
+    string line;
+    ifstream myfile(filename);
+    if (myfile.is_open()) {
+      while (!myfile.eof()) {
+        getline(myfile, line);
+        if (line.empty()) {
+          break;
+        }
+        istringstream iss(line);
+        vector<string> tokens;
+        copy(istream_iterator<string>(iss), istream_iterator<string>(), back_inserter(tokens));
+        if (tokens.empty()) {
+          break;
+        } else if (tokens.size() == 1u) {
+          const auto token = tokens[0];
+          if (token == "HOLE") {
+            state = Hole;
+            out_holes.emplace_back();
+            hole = &out_holes.back();
+          } else if (token == "STEINER") {
+            state = Steiner;
+          } else {
+            throw runtime_error("Invalid token [" + token + "]");
+          }
+        } else {
+          double x = StringToDouble(tokens[0]);
+          double y = StringToDouble(tokens[1]);
+          switch (state) {
+            case Polyline:
+              out_polyline.push_back(new Point(x, y));
+              break;
+            case Hole:
+              assert(hole != nullptr);
+              hole->push_back(new Point(x, y));
+              break;
+            case Steiner:
+              out_steiner.push_back(new Point(x, y));
+              break;
+            default:
+              assert(0);
+          }
+        }
+      }
+    } else {
+      throw runtime_error("File not opened");
+    }
+  } catch (exception& e) {
+    cerr << "Error parsing file: " << e.what() << endl;
+    return false;
+  }
+  return true;
+}
 
+std::pair<Point, Point> BoundingBox(const std::vector<Point*>& polyline)
+{
+  assert(polyline.size() > 0);
+  using Scalar = decltype(p2t::Point::x);
+  Point min(std::numeric_limits<Scalar>::max(), std::numeric_limits<Scalar>::max());
+  Point max(std::numeric_limits<Scalar>::min(), std::numeric_limits<Scalar>::min());
+  for (const Point* point : polyline) {
+    min.x = std::min(min.x, point->x);
+    min.y = std::min(min.y, point->y);
+    max.x = std::max(max.x, point->x);
+    max.y = std::max(max.y, point->y);
+  }
+  return std::make_pair(min, max);
+}
+
+void GenerateRandomPointDistribution(size_t num_points, double min, double max,
+                                     vector<Point*>& out_polyline,
+                                     vector<vector<Point*>>& out_holes, vector<Point*>& out_steiner)
+{
+  out_polyline.push_back(new Point(min, min));
+  out_polyline.push_back(new Point(min, max));
+  out_polyline.push_back(new Point(max, max));
+  out_polyline.push_back(new Point(max, min));
+
+  max -= (1e-4);
+  min += (1e-4);
+  for (int i = 0; i < num_points; i++) {
+    double x = Random(Fun, min, max);
+    double y = Random(Fun, min, max);
+    out_steiner.push_back(new Point(x, y));
+  }
+}
+
+void Init(int window_width, int window_height)
+{
   if (glfwInit() != GL_TRUE)
     ShutDown(1);
-  // 800 x 600, 16 bit color, no depth, alpha or stencil buffers, windowed
+  // width x height, 16 bit color, no depth, alpha or stencil buffers, windowed
   window = glfwCreateWindow(window_width, window_height, "Poly2Tri - C++", NULL, NULL);
   if (!window)
     ShutDown(1);
@@ -263,7 +365,7 @@ void MainLoop(const double zoom)
 
     // calculate time elapsed, and the amount by which stuff rotates
     double current_time = glfwGetTime(),
-           delta_rotate = (current_time - old_time) * rotations_per_tick * 360;
+           delta_rotate = (current_time - old_time) * rotations_per_tick * 360.0;
     old_time = current_time;
 
     // escape to quit, arrow keys to rotate view
@@ -302,8 +404,8 @@ void ResetZoom(double zoom, double cx, double cy, double width, double height)
   glLoadIdentity();
 
   // Reset ortho view
-  glOrtho(left, right, bottom, top, 1, -1);
-  glTranslatef(-cx, -cy, 0);
+  glOrtho(left, right, bottom, top, 1.0, -1.0);
+  glTranslated(-cx, -cy, 0.0);
   glMatrixMode(GL_MODELVIEW);
   glDisable(GL_DEPTH_TEST);
   glLoadIdentity();
@@ -317,7 +419,7 @@ void Draw(const double zoom)
   // reset zoom
   Point center = Point(cx, cy);
 
-  ResetZoom(zoom, center.x, center.y, 800, 600);
+  ResetZoom(zoom, center.x, center.y, (double)default_window_width, (double)default_window_height);
 
   for (int i = 0; i < triangles.size(); i++) {
     Triangle& t = *triangles[i];
@@ -329,20 +431,25 @@ void Draw(const double zoom)
     glColor3f(1, 0, 0);
 
     glBegin(GL_LINE_LOOP);
-    glVertex2f(a.x, a.y);
-    glVertex2f(b.x, b.y);
-    glVertex2f(c.x, c.y);
+    glVertex2d(a.x, a.y);
+    glVertex2d(b.x, b.y);
+    glVertex2d(c.x, c.y);
     glEnd();
   }
 
   // green
   glColor3f(0, 1, 0);
 
+  vector<vector<Point*>*> polylines;
+  polylines.push_back(&polyline);
+  for (vector<Point*>& hole : holes) {
+      polylines.push_back(&hole);
+  }
   for(int i = 0; i < polylines.size(); i++) {
-    vector<Point*> poly = polylines[i];
+    const vector<Point*>& poly = *polylines[i];
     glBegin(GL_LINE_LOOP);
       for(int j = 0; j < poly.size(); j++) {
-        glVertex2f(poly[j]->x, poly[j]->y);
+        glVertex2d(poly[j]->x, poly[j]->y);
       }
     glEnd();
   }
@@ -353,7 +460,7 @@ void DrawMap(const double zoom)
   // reset zoom
   Point center = Point(cx, cy);
 
-  ResetZoom(zoom, center.x, center.y, 800, 600);
+  ResetZoom(zoom, center.x, center.y, (double)default_window_width, (double)default_window_height);
 
   list<Triangle*>::iterator it;
   for (it = map.begin(); it != map.end(); it++) {
@@ -364,20 +471,20 @@ void DrawMap(const double zoom)
 
     ConstrainedColor(t.constrained_edge[2]);
     glBegin(GL_LINES);
-    glVertex2f(a.x, a.y);
-    glVertex2f(b.x, b.y);
+    glVertex2d(a.x, a.y);
+    glVertex2d(b.x, b.y);
     glEnd( );
 
     ConstrainedColor(t.constrained_edge[0]);
     glBegin(GL_LINES);
-    glVertex2f(b.x, b.y);
-    glVertex2f(c.x, c.y);
+    glVertex2d(b.x, b.y);
+    glVertex2d(c.x, c.y);
     glEnd( );
 
     ConstrainedColor(t.constrained_edge[1]);
     glBegin(GL_LINES);
-    glVertex2f(c.x, c.y);
-    glVertex2f(a.x, a.y);
+    glVertex2d(c.x, c.y);
+    glVertex2d(a.x, a.y);
     glEnd( );
   }
 }
@@ -392,33 +499,6 @@ void ConstrainedColor(bool constrain)
     glColor3f(1, 0, 0);
   }
 }
-
-vector<Point*> CreateHeadHole() {
-
-  vector<Point*> head_hole;
-  head_hole.push_back(new Point(325, 437));
-  head_hole.push_back(new Point(320, 423));
-  head_hole.push_back(new Point(329, 413));
-  head_hole.push_back(new Point(332, 423));
-
-  return head_hole;
-}
-
-vector<Point*> CreateChestHole() {
-
-  vector<Point*> chest_hole;
-  chest_hole.push_back(new Point(320.72342,480));
-  chest_hole.push_back(new Point(338.90617,465.96863));
-  chest_hole.push_back(new Point(347.99754,480.61584));
-  chest_hole.push_back(new Point(329.8148,510.41534));
-  chest_hole.push_back(new Point(339.91632,480.11077));
-  chest_hole.push_back(new Point(334.86556,478.09046));
-
-  return chest_hole;
-
-}
-
-
 
 double StringToDouble(const std::string& s)
 {

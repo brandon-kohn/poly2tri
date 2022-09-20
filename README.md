@@ -27,29 +27,44 @@ Core poly2tri lib:
 
 * Standard Template Library (STL)
 
+Unit tests:
+* Boost (filesystem, test framework)
+
 Testbed:
 
-* gcc
 * OpenGL
 * [GLFW](http://glfw.sf.net)
-* Python
 
-[waf](http://code.google.com/p/waf/) is used to compile the testbed.
-A waf script (86kb) is included in the repositoty.
+Build the library
+-----------------
 
-Building the Testbed
---------------------
+With the ninja build system installed:
 
-Posix/MSYS environment:
 ```
-./waf configure
-./waf build
+mkdir build && cd build
+cmake -GNinja ..
+cmake --build .
 ```
 
-Windows command line:
+Build and run with unit tests
+----------------------------
+
+With the ninja build system:
+
 ```
-python waf configure
-python waf build
+mkdir build && cd build
+cmake -GNinja -DP2T_BUILD_TESTS=ON ..
+cmake --build .
+ctest --output-on-failure
+```
+
+Build with the testbed
+-----------------
+
+```
+mkdir build && cd build
+cmake -GNinja -DP2T_BUILD_TESTBED=ON ..
+cmake --build .
 ```
 
 Running the Examples
@@ -57,17 +72,30 @@ Running the Examples
 
 Load data points from a file:
 ```
-p2t <filename> <center_x> <center_y> <zoom>
+build/testbed/p2t <filename> <center_x> <center_y> <zoom>
 ```
-Random distribution of points inside a consrained box:
+Load data points from a file and automatically fit the geometry to the window:
 ```
-p2t random <num_points> <box_radius> <zoom>
+build/testbed/p2t <filename>
+```
+Random distribution of points inside a constrained box:
+```
+build/testbed/p2t random <num_points> <box_radius> <zoom>
 ```
 Examples:
 ```
-./build/p2t testbed/data/dude.dat 300 500 2
-./build/p2t testbed/data/nazca_monkey.dat 0 0 9
+build/testbed/p2t testbed/data/dude.dat 350 500 3
 
-./build/p2t random 10 100 5.0
-./build/p2t random 1000 20000 0.025
+build/testbed/p2t testbed/data/nazca_monkey.dat
+
+build/testbed/p2t random 10 100 5.0
+build/testbed/p2t random 1000 20000 0.025
 ```
+
+References
+==========
+
+- Domiter V. and Zalik B. (2008) Sweep‐line algorithm for constrained Delaunay triangulation
+- FlipScan by library author Thomas Åhlén
+
+![FlipScan](doc/FlipScan.png)

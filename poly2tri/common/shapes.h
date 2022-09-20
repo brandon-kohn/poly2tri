@@ -37,7 +37,7 @@
 #include <vector>
 #include <cstddef>
 #include <cmath>
-#include <exception>
+#include <stdexcept>
 //#include <geometrix/utility/assert.hpp>
 
 namespace p2t {
@@ -119,31 +119,6 @@ struct Point {
     return len;
   }
 
-};
-	
-struct collinear_points_exception : std::exception
-{
-	collinear_points_exception(const Point& a, const Point& b, const Point& c)
-		: a(a)
-		, b(b)
-		, c(c)
-	{}
-
-	const char* what()
-	{
-		return "poly2tri: collinear points not supported";
-	}
-
-	Point a;
-	Point b;
-	Point c;
-};
-
-struct degenerate_triangle_exception : collinear_points_exception 
-{
-    degenerate_triangle_exception(const Point& a, const Point& b, const Point& c)
-        : collinear_points_exception(a, b, c)
-    {}
 };
 
 // Represents a simple polygon's edge
@@ -345,6 +320,65 @@ inline void Triangle::IsInterior(bool b)
   interior_ = b;
 }
 
-}
+struct poly2tri_exception : std::runtime_error
+{
+	poly2tri_exception( const char* what = "poly2tri_exception" )
+		: std::runtime_error(what)
+	{}
+};
+
+struct collinear_points_exception : poly2tri_exception
+{
+	collinear_points_exception( const Point& a, const Point& b, const Point& c, const char* what_arg = "collinear_points_exception" )
+		: poly2tri_exception( what_arg )
+        , a(a)
+		, b(b)
+		, c(c)
+	{}
+
+	const char* what()
+	{
+		return "poly2tri: collinear points not supported";
+	}
+
+	Point a;
+	Point b;
+	Point c;
+};
+
+struct degenerate_triangle_exception : collinear_points_exception 
+{
+	degenerate_triangle_exception( const Point& a, const Point& b, const Point& c, const char* what_arg = "degenerate_triangle_exception" )
+        : collinear_points_exception(a, b, c, what_arg)
+    {}
+};
+
+struct null_triangle_exception : poly2tri_exception
+{
+	null_triangle_exception( const char* what_arg = "null_triangle_exception" )
+		: poly2tri_exception( what_arg )
+	{}
+
+	null_triangle_exception( const Point&a, const Point& b, const Point& c, const char* what_arg = "null_triangle_exception" )
+		: poly2tri_exception( what_arg )
+		, a(a)
+		, b(b)
+		, c(c)
+	{}
+	
+    null_triangle_exception( Triangle* nearTrig, const char* what_arg = "null_triangle_exception" )
+		: poly2tri_exception( what_arg )
+		, a( nearTrig->GetPoint( 0 ) ? *nearTrig->GetPoint( 0 ) : Point( std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity() ) )
+		, b( nearTrig->GetPoint( 1 ) ? *nearTrig->GetPoint( 1 ) : Point( std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity() ) )
+		, c( nearTrig->GetPoint( 2 ) ? *nearTrig->GetPoint( 2 ) : Point( std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity() ) )
+	{}
+
+    //! Points from hopefully adjacent triangle which produced this due to a null neighbor?
+	Point a;
+	Point b;
+	Point c;
+};
+
+}//! namespace pt2;
 
 #endif

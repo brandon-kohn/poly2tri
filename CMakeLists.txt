@@ -27,6 +27,10 @@ if(MSVC AND NOT "${FORCE_MSVC_RUNTIME}" STREQUAL "")
     message(STATUS "poly2tri: Forcing msvc runtime to ${FORCE_MSVC_RUNTIME}")
     force_msvc_runtime()
 endif()
+if(MSVC AND NOT "${FORCE_MSVC_DEBUG_DEFINE}" STREQUAL "")
+    message(STATUS "poly2tri: Forcing msvc debug define to ${FORCE_MSVC_DEBUG_DEFINE}")
+    force_msvc_debug_define()
+endif()
 
 # Targets
 # NOTE: Only static libs supported as STL are part of the interface.

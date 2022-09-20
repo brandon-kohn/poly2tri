@@ -45,17 +45,21 @@ struct POLY2TRI_API Point {
   double x, y;
 
   /// Default constructor does nothing (for performance).
-  Point()
+  Point() 
+      : x{}
+      , y{}
   {
-    x = 0.0;
-    y = 0.0;
   }
 
   /// The edges this point constitutes an upper ending point
   std::vector<Edge*> edge_list;
 
   /// Construct using coordinates.
-  Point(double x, double y);
+  Point(double x, double y) 
+      : x{ x }
+      , y{ y }
+  {
+  }
 
   /// Set this point to all zeros.
   void set_zero()

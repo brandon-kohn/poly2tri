@@ -35,6 +35,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <vector>
+#include <limits>
 
 namespace p2t {
 

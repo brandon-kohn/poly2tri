@@ -9,7 +9,7 @@ find_package(Boost 1.65.1)
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
   link_directories(${Boost_LIBRARY_DIRS})
-  add_definitions(-DBOOST_RESULT_OF_USE_TR1_WITH_DECLTYPE_FALLBACK -D"BOOST_PARAMETER_MAX_ARITY=20")
+  add_definitions(-D"BOOST_PARAMETER_MAX_ARITY=20")
   message("Boost found: ${Boost_INCLUDE_DIRS}")
 endif()
 
